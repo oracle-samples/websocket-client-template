@@ -4,4 +4,3 @@ output
 .DS_Store
 __transpiled
 test/temp
-package-lock.json
