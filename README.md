@@ -1,28 +1,137 @@
-*This repository acts as a template for all of Oracle’s GitHub repositories. It contains information about the guidelines for those repositories. All files and sections contained in this template are mandatory, and a GitHub app ensures alignment with these guidelines. To get started with a new repository, replace the italic paragraphs with the respective text for your project.*
+<h1 align="center">WebSocket Client template</h1>
 
-# Project name
+<p align="center">
+  <em>This is a websocket client template for the AsyncAPI generator</em>
+</p>
 
-*Describe your project's features, functionality and target audience*
+[![AsyncAPI logo](./assets/github-repobanner-generic.png)](https://www.asyncapi.com)  
 
-## Installation
 
-*Provide detailed step-by-step installation instructions. You can name this section **How to Run** or **Getting Started** instead of **Installation** if that's more acceptable for your project*
 
-## Documentation
+<!-- toc is generated with GitHub Actions do not remove toc markers -->
 
-*Developer-oriented documentation can be published on GitHub, but all product documentation must be published on <https://docs.oracle.com>*
+<!-- toc -->
 
-## Examples
+- [Overview](#overview)
+- [Technical requirements](#technical-requirements)
+- [Specification requirements](#specification-requirements)
+- [Supported protocols](#supported-protocols)
+- [How to use the template](#how-to-use-the-template)
+  * [Data Streaming Client](#data-streaming-client)
+- [Template configuration](#template-configuration)
+- [Development](#development)
+- [Contributing](#contributing)
+- [Security](#security)
+- [License](#license)
 
-*Describe any included examples or provide a link to a demo/tutorial*
+<!-- tocstop -->
 
-## Help
+## Overview
 
-*Inform users on where to get help or how to receive official support from Oracle (if applicable)*
+This template generates the following resources related to WebSockets streaming protocol:
+
+- Client node-js script to connect and receive data from a websocket data streaming service
+- Client python  script to connect and receive data from a websocket data streaming service
+
+Other files are for the setup of developer environment, like `.editorconfig` or `.eslint`.
+
+## Technical requirements
+
+The Generator is a Node.js application. Therefore, this template also depends on Node.js. The generator's technical requirements are:
+
+- Node.js v18.12.0+
+- npm v8.19.0+
+
+Install both using [official installer](https://nodejs.org/en/download/).
+
+After that you can install the [AsyncAPI Generator](https://github.com/asyncapi/generator) globally to use its CLI:
+
+```bash
+npm install -g @asyncapi/generator
+```
+
+## Specification requirements
+
+This is a very early version of the template and not all specification features are supported:
+
+Property name | Reason | Fallback | Default
+---|---|---|---
+`servers.*.url` | Template doesn't support variables in the server url. | - | -
+`bindings` | Template doesn't fully use [websockets](https://github.com/asyncapi/bindings/tree/master/websockets) bindings.| - | -
+`operationId` | Operation ID must be set for every operation to generate proper functions as there is no fallback in place | - | -
+
+## Supported protocols
+
+[WebSocket](https://en.wikipedia.org/wiki/WebSocket)
+
+## How to use the template
+
+This template must be used with the AsyncAPI Generator. You can find all available options [here](https://github.com/asyncapi/generator/).
+
+### Data Streaming Client
+
+In case of one-way data streaming use case, A client program establishes the websocket connection with the specified service and starts to receive data in a streaming fashion. In this usage case, a single channel is assumed in the service configuration and only subscribe operation is supported for the channel. To generate the data streaming client, run the asyncapi generator against a websocket client API specification such as test/streaming.yaml:
+
+```bash
+# Install dependecies and the AsyncAPI Generator
+npm install
+npm install -g @asyncapi/generator
+
+# Run generation,
+# you need to customize the asyncapi yaml document with your actual server settings. 
+ag test/streaming.yaml . -o output -p server=localhost
+or
+ag test/streaming.yaml @asyncapi/websocket-client-template -o output -p server=localhost
+
+# Go to generated output folder, and install needed packages for client
+cd output
+npm install
+
+##
+## Start the client
+##
+
+# Optional: You can set environment variables for username/password or the location of certificate/key.
+# For WS, use ASYNCAPI_WS_CLIENT_USERNAME and ASYNCAPI_WS_CLIENT_PASSWORD to specify the username and password accordingly. 
+# For WSS, use ASYNCAPI_WS_CLIENT_CERT, ASYNCAPI_WS_CLIENT_KEY, and ASYNCAPI_WS_CA_CERT to specify the location of client certificate, client private key, or CA certificate.
+
+# Excute the client and follow the instructions
+node client.js
+```
+
+## Template configuration
+
+You can configure this template by passing different parameters in the Generator CLI: `-p PARAM1_NAME=PARAM1_VALUE -p PARAM2_NAME=PARAM2_VALUE`
+
+| Name | Description | Required | Default | Allowed Values | Example
+|---|---|---|---|---|---|
+|server|The server you want to use in the code.|Yes| - | Name of the server from the list of servers under Servers object | `localhost`|
+
+
+## Development
+
+The most straightforward command to use this template is:
+```bash
+ag test/streaming.yaml @asyncapi/websocket-client-template -o output -p server=localhost
+```
+
+For local development, you need different variations of this command. First of all, you need to know about the following important CLI flags:
+- `--install` enforces reinstallation of the template.
+
+There are two ways you can work on template development:
+- Use global Generator and template from your local sources:
+  ```bash
+  # assumption is that you run this command from the root of your template
+  ag test/streaming.yaml ./ -o output -p server=localhost
+  ```
+- Use Generator from sources and template also from local sources. This approach enables more debugging options with awesome `console.log` in the Generator sources or even the Parser located in `node_modules` of the Generator:
+  ```bash
+  # assumption is that you run this command from the root of your template
+  # assumption is that generator sources are cloned on the same level as the template
+  ../generator/cli.js test/streaming.yaml ./ -o output -p server=localhost
+  ```
 
 ## Contributing
-
-*If your project has specific contribution requirements, update the CONTRIBUTING.md file to ensure those requirements are clearly explained*
 
 This project welcomes contributions from the community. Before submitting a pull request, please [review our contribution guide](./CONTRIBUTING.md)
 
@@ -32,13 +141,17 @@ Please consult the [security guide](./SECURITY.md) for our responsible security 
 
 ## License
 
-*The correct copyright notice format for both documentation and software is*
-    "Copyright (c) [year,] year Oracle and/or its affiliates."
-*You must include the year the content was first released (on any platform) and the most recent year in which it was revised*
+You may not use the identified files except in compliance with the
+Apache License, Version 2.0 (the "License.")
 
-Copyright (c) 2023 Oracle and/or its affiliates.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0.  A copy of the license is
+also reproduced in [LICENSE.md](./LICENSE.md)
 
-*Replace this statement if your project is not licensed under the UPL*
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied.
 
-Released under the Universal Permissive License v1.0 as shown at
-<https://oss.oracle.com/licenses/upl/>.
+See the License for the specific language governing permissions and
+limitations under the License.
