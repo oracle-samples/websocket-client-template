@@ -20,7 +20,6 @@
   * [Data Streaming Client](#data-streaming-client)
 - [Template configuration](#template-configuration)
 - [Development](#development)
-- [Contributors](#contributors)
 - [Contributing](#contributing)
 - [Security](#security)
 - [License](#license)
