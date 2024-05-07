@@ -1,0 +1,183 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`templateGenerationResult() generated correct streaming client code 1`] = `
+"//////////////////////////////////////////////////////////////////////
+//
+// data streaming API - 1.0.0
+// ws protocol: 
+// admin:admin@localhost:9002 
+// /services/v2/stream/stream1
+//////////////////////////////////////////////////////////////////////
+const WebSocket = require('ws')
+const reader = require('readline-sync');
+const fs = require('fs');
+
+//////////////////////////////////////////////////////////////////////
+//
+// This client demonstrates the one-way websocket streaming use case
+// -- It assumes only one channel in the server!
+// -- It assumes only 'subscribe' oepration in the channel!
+// -- It supports query parameters such as ?begin=now&format=json
+//
+//////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////
+//
+// generic data processing with the websocket service,
+// assume an array of json objects.
+//
+////////////////////////////////////////////////////////////////
+const onRecords = (wsClient) => {
+    wsClient.on('message', function message(data) {
+        console.log('received some data:')
+        const records = data.toString()
+ 
+        const recordArray = eval(records);
+        for (var i = 0; i < recordArray.length; i++) {
+	    console.log(recordArray[i]);
+            //data processing, implement user logic here. 
+        }
+        
+    });
+    wsClient.on('error', (err) => {
+        console.log(err.toString());
+    });
+}
+
+////////////////////////////////////////////////////////////////
+//
+// main entry point for the example client:
+// asyncapi yaml definition is parsed to provide service
+// access URL and a dedicated websocket connection is
+// created to stream data from the service.
+//
+////////////////////////////////////////////////////////////////
+
+const init = async () =>{
+       
+       
+    let serviceURL = 'ws://admin:admin@localhost:9002/services/v2/stream/stream1';
+      const queryParams = new Map([['begin','earliest']]);
+
+    const queryParamSign    = "?";
+    const queryParamDelimit = "&";
+    let queryParamSignAdded = false;
+    let size                = queryParams.length;
+
+    for (const [key, value] of queryParams) {
+      let paramValue = reader.question("Enter the value for query parameter "+key+"(default="+value+"):") || value;
+
+      if (!queryParamSignAdded) {
+        serviceURL += queryParamSign;
+        queryParamSignAdded = true;
+      }
+      serviceURL += key + "=" + paramValue;
+      size--;
+      if (size) {
+        serviceURL += queryParamDelimit;
+      }
+    }
+  
+    console.log(" ");
+    console.log("Establishing websocket connection to: ");
+    // uncomment below for debugging
+    console.log(serviceURL); 
+    console.log(" ");
+ 
+    // establishing websocket connection to the service
+    const wsClient = new WebSocket(serviceURL);
+    
+    console.log(" ");
+    console.log("Start streaming data from the service ...");
+    console.log(" ");
+
+    // now start the client processing    
+    onRecords (wsClient)
+}
+
+init()
+"
+`;    
+
+exports[`templateGenerationResult() generated correct streaming client code 2`] = `
+"#!/usr/bin/env python
+###############################################################################
+#
+# data streaming API - 1.0.0
+# ws protocol: 
+# admin:admin@localhost:9002 
+# /services/v2/stream/stream1
+###############################################################################
+
+import asyncio
+import websockets
+import json
+import ssl
+import pathlib
+import getpass
+import os
+
+###############################################################################
+#
+# This client demonstrates the one-way websocket streaming use case
+# -- It assumes only one channel in the server!
+# -- It assumes only 'subscribe' oepration in the channel!
+# -- It supports query parameters such as ?begin=now&format=json
+#
+###############################################################################
+
+###############################################################################
+#
+# main entry point for the example client:
+# asyncapi yaml definition is parsed to provide service
+# access URL and a dedicated websocket connection is
+# created to stream data from the service.
+#
+###############################################################################
+async def onRecords():
+    ## take user input
+ 
+    # construct service URL
+    serviceURL = 'ws://admin:admin@localhost:9002/services/v2/stream/stream1'
+      
+    queryParamsDefault = {}
+    queryParamsDefault['begin'] = 'earliest'
+
+
+    queryParamSign      = '?'
+    queryParamDelimit   = '&'
+    queryParamSignAdded = False
+    size                = len(queryParamsDefault)
+
+    for key in queryParamsDefault.keys():
+      prompt = "Enter value for query parameter "+key+"(default="+queryParamsDefault[key]+"):"
+      paramValue = input(prompt) or queryParamsDefault[key];
+
+      if not queryParamSignAdded:
+        serviceURL += queryParamSign
+        queryParamSignAdded = True
+      serviceURL += key + "=" + paramValue
+      size=size-1
+      if size:
+        serviceURL += queryParamDelimit
+     
+    # uncomment below for debugging
+    #print(serviceURL)    
+ 
+    ## establishing websocket connection to the service
+    async with websockets.connect(serviceURL) as websocket:
+        print("start streaming data from the service")
+        while True:
+            data = await websocket.recv()
+            records = json.loads(data)
+            count = len(records)
+            print(f"< received {count} records")
+            for rec in records:
+                #
+                # implement client side data processing logic here
+                #
+                print(f"< {rec}")
+
+asyncio.run(onRecords())
+"
+`;    
