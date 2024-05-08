@@ -1,4 +1,4 @@
-<h1 align="center">WebSocket Client template</h1>
+# WebSocket Client template
 
 <p align="center">
   <em>This is a websocket client template for the AsyncAPI generator</em>
@@ -42,6 +42,8 @@ The Generator is a Node.js application. Therefore, this template also depends on
 - Node.js v18.12.0+
 - npm v8.19.0+
 
+## installation
+
 Install both using [official installer](https://nodejs.org/en/download/).
 
 After that you can install the [AsyncAPI Generator](https://github.com/asyncapi/generator) globally to use its CLI:
@@ -50,7 +52,7 @@ After that you can install the [AsyncAPI Generator](https://github.com/asyncapi/
 npm install -g @asyncapi/generator
 ```
 
-## Specification requirements
+## Documentation
 
 This is a very early version of the template and not all specification features are supported:
 
