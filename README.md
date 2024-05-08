@@ -14,7 +14,7 @@
 
 - [Overview](#overview)
 - [Technical requirements](#technical-requirements)
-- [Specification requirements](#specification-requirements)
+- [Documentation](#documentation)
 - [Supported protocols](#supported-protocols)
 - [How to use the template](#how-to-use-the-template)
   * [Data Streaming Client](#data-streaming-client)
