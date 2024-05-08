@@ -1,6 +1,6 @@
 # WebSocket Client template
 
-<p align="center">
+<p>
   <em>This is a websocket client template for the AsyncAPI generator</em>
 </p>
 
