@@ -106,13 +106,14 @@ You can configure this template by passing different parameters in the Generator
 | Name | Description | Required | Default | Allowed Values | Example
 |---|---|---|---|---|---|
 |server|The server you want to use in the code.|Yes| - | Name of the server from the list of servers under Servers object | `localhost`|
+|language|The programming language of the client application you want to generate.|No| javascript | javascript/python/java/golang/all | `all`|
 
 
 ## Development
 
 The most straightforward command to use this template is:
 ```bash
-ag test/streaming.yaml @asyncapi/websocket-client-template -o output -p server=localhost
+ag test/streaming.yaml @asyncapi/websocket-client-template -o output -p server=localhost -p language=python
 ```
 
 For local development, you need different variations of this command. First of all, you need to know about the following important CLI flags:

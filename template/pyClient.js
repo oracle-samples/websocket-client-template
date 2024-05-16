@@ -142,13 +142,23 @@ function setQueryParam (channel, queryMap) {
 }
 
 export default function({ asyncapi, params }) {
-  if (asyncapi.components().isEmpty()) {
+    
+  if (asyncapi.components().isEmpty())
+  {
     return null;
   }
-  if (asyncapi.channels().isEmpty()) {
+    
+  if (asyncapi.channels().isEmpty())
+  {
     return null;
   }
 
+  const lang = params.language;
+  if (lang !== "all" && lang !== "python")
+  {
+    return null;
+  }
+    
   const server            = asyncapi.servers().get(params.server);
   const urlProtocol       = server.protocol();
   const urlHost           = server.host();

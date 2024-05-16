@@ -19,6 +19,13 @@
 import { File } from '@asyncapi/generator-react-sdk';
 
 export default function({ asyncapi, params }) {
+
+  const lang = params.language;
+  if (lang !== "all" && lang !== "javascript")
+  {
+    return null;
+  }  
+    
   let jsonString =
 `{ 
   "name": "${asyncapi.info().title()}",

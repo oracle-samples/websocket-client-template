@@ -64,6 +64,11 @@
       "server": {
         "description": "The data streaming server name",
         "required": true
+      },
+      "language": {
+        "description": "The programming language of the generated client application",
+          "required": false,
+	  "default": "javascript"
       }
     },
     "generator": ">=1.3.0 <3.0.0",
