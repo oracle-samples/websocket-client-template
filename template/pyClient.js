@@ -40,7 +40,7 @@ function getUserInputBlock (isSecure, isBasicAuth, isDigestAuth, isCertAuth) {
   {
     if (isCertAuth)
     {
-      throw new Error('authentication using certificate is not supported for ws protocol');
+      throw new Error('authorization using certificate is not supported for ws protocol');
     }
   }
 
@@ -191,7 +191,6 @@ export default function({ asyncapi, params }) {
   let userFunction        = "processData";
   let urlPath             = "";
   let isSecure            = false;
-  let userPassinUrl       = false;
   let isBasicAuth         = false;
   let isDigestAuth        = false;
   let isCertAuth          = false;
@@ -202,7 +201,7 @@ export default function({ asyncapi, params }) {
     isSecure = true;
   }
     
-  const auth = params.authentication;
+  const auth = params.authorization;
   if (auth == "basic")
   {
     isBasicAuth = true;
@@ -217,7 +216,7 @@ export default function({ asyncapi, params }) {
   }
   else
   {
-    throw new Error('the authentication method must be basic, digest or certificate');
+    throw new Error('the authorization method must be basic, digest or certificate');
   }
     
   if (channels.length !== 1) {

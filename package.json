@@ -70,8 +70,8 @@
         "required": false,
 	    "default": "javascript"
       },
-      "authentication": {
-        "description": "authentication methods",
+      "authorization": {
+        "description": "authorization methods",
         "required": false,
 	    "default": "basic"
       }
