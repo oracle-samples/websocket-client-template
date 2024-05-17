@@ -68,12 +68,12 @@
       "language": {
         "description": "The programming language of the generated client application",
         "required": false,
-	    "default": "javascript"
+        "default": "javascript"
       },
       "authorization": {
         "description": "authorization methods",
         "required": false,
-	    "default": "basic"
+        "default": "basic"
       }
     },
     "generator": ">=1.3.0 <3.0.0",
