@@ -73,7 +73,7 @@
       "authorization": {
         "description": "authorization methods",
         "required": false,
-        "default": "basic"
+        "default": "certificate"
       }
     },
     "generator": ">=1.3.0 <3.0.0",

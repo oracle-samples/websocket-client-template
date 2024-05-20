@@ -18,7 +18,7 @@
 
 import { File } from '@asyncapi/generator-react-sdk';
 
-function getUserInputBlock (isSecure, isBasicAuth, isDigestAuth, isCertAuth) {
+function getUserInputBlock (isSecure, authMethod) {
 
   let retStr = ``
 
@@ -38,13 +38,13 @@ function getUserInputBlock (isSecure, isBasicAuth, isDigestAuth, isCertAuth) {
   }
   else 
   {
-    if (isCertAuth)
+    if (authMethod === "certificate")
     {
-      throw new Error('authorization using certificate is not supported for ws protocol');
+      throw new Error('authorization using certificate is currently not supported for ws protocol, please set authorization as basic or digest');
     }
   }
 
-  if (isBasicAuth || isDigestAuth) 
+  if (authMethod === "basic" || authMethod === "digest") 
   {
     retStr += `
     username = os.environ.get("ASYNCAPI_WS_CLIENT_USERNAME")
@@ -87,10 +87,10 @@ function getQueryParamBlock(queryMap) {
   `;
 }
 
-function getServiceUrlBlock (isSecure, isBasicAuth, isDigestAuth, urlProtocol, urlHost, urlPath) {
+function getServiceUrlBlock (isSecure, authMethod, urlProtocol, urlHost, urlPath) {
   let httpProtocol = ``;
   let httpURL = ``;
-  if (isBasicAuth || isDigestAuth)
+  if (authMethod === "basic" || authMethod === "digest") 
   {
     if (isSecure)
     {
@@ -100,16 +100,14 @@ function getServiceUrlBlock (isSecure, isBasicAuth, isDigestAuth, urlProtocol, u
     {
       httpProtocol = `http`;
     }
-    httpURL = `serviceURLHttp = '`+httpProtocol+`://`+urlHost+urlPath+`'`;
+    httpURL = `    serviceURLHttp = '` + httpProtocol + `://` + urlHost + urlPath + `'\n`;
   }
   return ` 
     # construct service URL
-    serviceURL = '`+urlProtocol+`://`+urlHost+urlPath+`'
-    `+httpURL
-  ;
+    serviceURL = '` + urlProtocol + `://` + urlHost + urlPath + `'\n` + httpURL;
 }
 
-function getWebSocketConnectionBlock (isSecure, isBasicAuth, isDigestAuth) {
+function getWebSocketConnectionBlock (isSecure, authMethod) {
   let getAuthHeaderStr = ``;
   let extraHeaderStr = ``;
   let verifyCaCertStr = ``;
@@ -118,13 +116,13 @@ function getWebSocketConnectionBlock (isSecure, isBasicAuth, isDigestAuth) {
     verifyCaCertStr = `, verify=caCert`;
   }
 
-  if (isBasicAuth)
+  if (authMethod === "basic") 
   {
     getAuthHeaderStr = `\n    r = requests.get(serviceURLHttp, auth=HTTPBasicAuth(username, password)` + verifyCaCertStr + `)
     authHeader = r.request.headers['Authorization']\n`;    
     extraHeaderStr = `, extra_headers=[('Authorization', authHeader)]`;
   }
-  if (isDigestAuth)
+  if (authMethod === "digest") 
   {
     getAuthHeaderStr = `\n    r = requests.get(serviceURLHttp, auth=HTTPDigestAuth(username, password)` + verifyCaCertStr + `)
     authHeader = r.request.headers['Authorization']\n`;    
@@ -202,19 +200,7 @@ export default function({ asyncapi, params }) {
   }
     
   const auth = params.authorization;
-  if (auth == "basic")
-  {
-    isBasicAuth = true;
-  }
-  else if (auth == "digest")
-  {
-    isDigestAuth = true;
-  }
-  else if (auth == "certificate")
-  {
-    isCertAuth = true;
-  }
-  else
+  if (auth !== "basic" && auth !== "digest" && auth !== "certificate")
   {
     throw new Error('the authorization method must be basic, digest or certificate');
   }
@@ -242,10 +228,10 @@ export default function({ asyncapi, params }) {
     setQueryParam(channel, queryMap);	  
   });
     
-  let userInputBlock = getUserInputBlock(isSecure, isBasicAuth, isDigestAuth, isCertAuth);
-  let serviceUrlBlock = getServiceUrlBlock(isSecure, isBasicAuth, isDigestAuth, urlProtocol, urlHost, urlPath);
+  let userInputBlock = getUserInputBlock(isSecure, auth);
+  let serviceUrlBlock = getServiceUrlBlock(isSecure, auth, urlProtocol, urlHost, urlPath);
   let queryParamBlock = getQueryParamBlock(queryMap); 
-  let websocketConnectionBlock = getWebSocketConnectionBlock(isSecure, isBasicAuth, isDigestAuth);
+  let websocketConnectionBlock = getWebSocketConnectionBlock(isSecure, auth);
      
   return (
     <File name="client.py">
