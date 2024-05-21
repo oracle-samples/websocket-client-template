@@ -28,7 +28,7 @@ info:
 servers:
   localhost:
     host: 'localhost:9002'
-    protocol: ws
+    protocol: wss
 
 defaultContentType: application/json
 

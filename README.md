@@ -79,9 +79,9 @@ npm install -g @asyncapi/generator
 
 # Run generation,
 # you need to customize the asyncapi yaml document with your actual server settings. 
-ag test/streaming.yaml . -o output -p server=localhost
+ag test/streaming.yaml . -o output -p server=localhost -p authorization=basic
 or
-ag test/streaming.yaml @asyncapi/websocket-client-template -o output -p server=localhost
+ag test/streaming.yaml @asyncapi/websocket-client-template -o output -p server=localhost -p authorization=basic
 
 # Go to generated output folder, and install needed packages for client
 cd output
@@ -124,7 +124,7 @@ There are two ways you can work on template development:
 - Use global Generator and template from your local sources:
   ```bash
   # assumption is that you run this command from the root of your template
-  ag test/streaming.yaml ./ -o output -p server=localhost
+  ag test/streaming.yaml ./ -o output -p server=localhost -p authorization=digest -p language=python
   ```
 - Use Generator from sources and template also from local sources. This approach enables more debugging options with awesome `console.log` in the Generator sources or even the Parser located in `node_modules` of the Generator:
   ```bash
