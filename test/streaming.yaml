@@ -27,7 +27,7 @@ info:
     url: 'https://www.apache.org/licenses/LICENSE-2.0'
 servers:
   localhost:
-    host: 'admin:admin@localhost:9002'
+    host: 'localhost:9002'
     protocol: ws
 
 defaultContentType: application/json

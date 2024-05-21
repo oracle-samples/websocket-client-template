@@ -18,16 +18,13 @@
 
 import { File } from '@asyncapi/generator-react-sdk';
 
-function getUserInputBlock (isSecure, isBasicAuth) {
-  if (isSecure) {
-    if (isBasicAuth) {
-      throw new Error('basic authentication user:passwd@ is not supported for wss protocol');
-    }
-    return `    ##
-    ## Note: The following commands can be used to extract pem file from the wallet.
-    ##  openssl pkcs12 -in <path_to_wallet>/ewallet.p12 -clcerts -nokeys -out <file_name>.crt
-    ##  openssl pkcs12 -in <path_to_wallet>/ewallet.p12 -nocerts -nodes  -out <file_name>.rsa
-    ##  openssl pkcs12 -in <path_to_wallet>/ewallet.p12 -cacerts -nokeys -chain -out <file_name>.crt
+function getUserInputBlock (isSecure, authMethod) {
+
+  let retStr = ``
+
+  if (isSecure) 
+  {
+    retStr += `
     userCert = os.environ.get("ASYNCAPI_WS_CLIENT_CERT")
     if not userCert:
         userCert = input("Enter location of the client certificate: ")
@@ -39,12 +36,18 @@ function getUserInputBlock (isSecure, isBasicAuth) {
         caCert = input("Enter location of the CA certificate: ")
     `;
   }
-  else {
-    if (isBasicAuth) {
-      return ``;
+  else 
+  {
+    if (authMethod === "certificate")
+    {
+      throw new Error('authorization using certificate is currently not supported for ws protocol, please set authorization as basic or digest');
     }
-    else {
-      return `    username = os.environ.get("ASYNCAPI_WS_CLIENT_USERNAME")
+  }
+
+  if (authMethod === "basic" || authMethod === "digest") 
+  {
+    retStr += `
+    username = os.environ.get("ASYNCAPI_WS_CLIENT_USERNAME")
     if not username:
         username = input("Enter the username for accessing the service: ")
     password = os.environ.get("ASYNCAPI_WS_CLIENT_PASSWORD")
@@ -53,14 +56,15 @@ function getUserInputBlock (isSecure, isBasicAuth) {
     if not username or not password :
       raise ValueError("username and password can not be empty")
       `;
-    }
   }
+
+  return retStr;
 }
 
 function getQueryParamBlock(queryMap) {
   let s1 ='\n    queryParamsDefault = {}\n';
   queryMap.forEach(function(value, key) {
-    s1 += '    queryParamsDefault[\''+key+'\'] = \''+value+'\'\n';
+    s1 += '    queryParamsDefault[\''+key+'\'] = \''+value+'\'';
   })
     
   return s1+`\n
@@ -83,44 +87,63 @@ function getQueryParamBlock(queryMap) {
   `;
 }
 
-function getServiceUrlBlock (isSecure,isBasicAuth,urlProtocol,urlHost,urlPath) {
-  if (isSecure) {
-    return ` 
-    # construct service URL
-    serviceURL = '`+urlProtocol+`://`+urlHost+urlPath+`'
-    `
-    ;
-  }
-  else {
-    if (isBasicAuth) {	  
-      return ` 
-    # construct service URL
-    serviceURL = '`+urlProtocol+`://`+urlHost+urlPath+`'
-      `;
+function getServiceUrlBlock (isSecure, authMethod, urlProtocol, urlHost, urlPath) {
+  let httpProtocol = ``;
+  let httpURL = ``;
+  if (authMethod === "basic" || authMethod === "digest") 
+  {
+    if (isSecure)
+    {
+      httpProtocol = `https`;
     }
-    else {
-      return `
-    # construct service URL
-    serviceURL = '`+urlProtocol+`://'+username+':'+password+'@`+urlHost+urlPath+`'
-    `;
+    else
+    {
+      httpProtocol = `http`;
     }
+    httpURL = `    serviceURLHttp = '` + httpProtocol + `://` + urlHost + urlPath + `'\n`;
   }
+  return ` 
+    # construct service URL
+    serviceURL = '` + urlProtocol + `://` + urlHost + urlPath + `'\n` + httpURL;
 }
 
-function getWebSocketConnectionBlock (isSecure) {
-  if (isSecure) {
+function getWebSocketConnectionBlock (isSecure, authMethod) {
+  let getAuthHeaderStr = ``;
+  let extraHeaderStr = ``;
+  let verifyCaCertStr = ``;
+  if (isSecure)
+  {
+    verifyCaCertStr = `, verify=caCert`;
+  }
+
+  if (authMethod === "basic") 
+  {
+    getAuthHeaderStr = `\n    r = requests.get(serviceURLHttp, auth=HTTPBasicAuth(username, password)` + verifyCaCertStr + `)
+    authHeader = r.request.headers['Authorization']\n`;    
+    extraHeaderStr = `, extra_headers=[('Authorization', authHeader)]`;
+  }
+  if (authMethod === "digest") 
+  {
+    getAuthHeaderStr = `\n    r = requests.get(serviceURLHttp, auth=HTTPDigestAuth(username, password)` + verifyCaCertStr + `)
+    authHeader = r.request.headers['Authorization']\n`;    
+    extraHeaderStr = `, extra_headers=[('Authorization', authHeader)]`;
+  }
+
+  if (isSecure) 
+  {
     return ` 
     ## establishing secure websocket connection to the service
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ssl_context.load_verify_locations(caCert)
-    ssl_context.load_cert_chain(userCert, userKey)
-
-    async with websockets.connect(serviceURL, ssl=ssl_context) as websocket:`;
+    ssl_context.load_cert_chain(userCert, userKey)\n` 
+    + getAuthHeaderStr + `
+    async with websockets.connect(serviceURL, ssl=ssl_context` + extraHeaderStr + `) as websocket:`;
   }
-  else {
+  else 
+  {
     return ` 
-    ## establishing websocket connection to the service
-    async with websockets.connect(serviceURL) as websocket:`;
+    ## establishing websocket connection to the service` + getAuthHeaderStr + `
+    async with websockets.connect(serviceURL` + extraHeaderStr + `) as websocket:`;
   }
 }
 
@@ -158,7 +181,7 @@ export default function({ asyncapi, params }) {
   {
     return null;
   }
-    
+
   const server            = asyncapi.servers().get(params.server);
   const urlProtocol       = server.protocol();
   const urlHost           = server.host();
@@ -167,14 +190,19 @@ export default function({ asyncapi, params }) {
   let urlPath             = "";
   let isSecure            = false;
   let isBasicAuth         = false;
+  let isDigestAuth        = false;
+  let isCertAuth          = false;
   let queryMap            = new Map();
     
-  if (urlProtocol === "wss") {
+  if (urlProtocol === "wss") 
+  {
     isSecure = true;
   }
     
-  if (urlHost.includes("@")) {
-    isBasicAuth = true;
+  const auth = params.authorization;
+  if (auth !== "basic" && auth !== "digest" && auth !== "certificate")
+  {
+    throw new Error('the authorization method must be basic, digest or certificate');
   }
     
   if (channels.length !== 1) {
@@ -200,10 +228,10 @@ export default function({ asyncapi, params }) {
     setQueryParam(channel, queryMap);	  
   });
     
-  let userInputBlock = getUserInputBlock(isSecure,isBasicAuth);
-  let serviceUrlBlock = getServiceUrlBlock(isSecure,isBasicAuth,urlProtocol,urlHost,urlPath);
+  let userInputBlock = getUserInputBlock(isSecure, auth);
+  let serviceUrlBlock = getServiceUrlBlock(isSecure, auth, urlProtocol, urlHost, urlPath);
   let queryParamBlock = getQueryParamBlock(queryMap); 
-  let websocketConnectionBlock = getWebSocketConnectionBlock(isSecure);
+  let websocketConnectionBlock = getWebSocketConnectionBlock(isSecure, auth);
      
   return (
     <File name="client.py">
@@ -223,6 +251,9 @@ import ssl
 import pathlib
 import getpass
 import os
+import requests
+from requests.auth import HTTPDigestAuth
+from requests.auth import HTTPBasicAuth
 
 ###############################################################################
 #

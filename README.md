@@ -107,6 +107,7 @@ You can configure this template by passing different parameters in the Generator
 |---|---|---|---|---|---|
 |server|The server you want to use in the code.|Yes| - | Name of the server from the list of servers under Servers object | `localhost`|
 |language|The programming language of the client application you want to generate.|No| javascript | javascript/python/java/golang/all | `all`|
+|authorization|The authorization method you want to use. Use basic or digest if the server is behind a proxy.|No| certificate | basic/digest/certificate | `basic`|
 
 
 ## Development
