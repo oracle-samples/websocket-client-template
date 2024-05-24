@@ -20,7 +20,7 @@ import { File } from '@asyncapi/generator-react-sdk';
 
 function getUserInputBlock (isSecure, authMethod) {
 
-  let retStr = ``
+  let retStr = ``;
 
   if (isSecure) 
   {

@@ -32,7 +32,8 @@ export default function({ asyncapi, params }) {
   "description": "${asyncapi.info().description()}",
   "version": "${asyncapi.info().version()}",
   "dependencies": {
-    "readline-sync": "^1.4.10"
+    "readline-sync": "^1.4.10",
+    "digest-header": "^1.0.0"
   }
 }`;
 
