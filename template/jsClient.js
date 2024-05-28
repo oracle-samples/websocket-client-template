@@ -36,16 +36,12 @@ function getDataProcessingBlock (msgType) {
   }
 }
 
-function getUserInputBlock (isSecure, isBasicAuth) {
+function getUserInputBlock (isSecure, authMethod) {
+
+  let retStr = ``;
+
   if (isSecure) {
-    if (isBasicAuth) {
-      throw new Error('basic authentication is not supported for wss protocol');
-    }
-    return ` 
-    //Note: The following commands can be used to extract key/cert from your wallet.
-    //   openssl pkcs12 -in <path_to_wallet>/ewallet.p12 -clcerts -nokeys -out <file_name>.crt  
-    //   openssl pkcs12 -in <path_to_wallet>/ewallet.p12 -nocerts -nodes  -out <file_name>.rsa
-    //   openssl pkcs12 -in <path_to_wallet>/ewallet.p12 -cacerts -nokeys -chain -out <file_name>.crt
+    retStr += ` 
     let userCert = "ASYNCAPI_WS_CLIENT_CERT" in process.env ? 
     		process.env.ASYNCAPI_WS_CLIENT_CERT : 
 		reader.question("Enter location of the client certificate: ");
@@ -57,30 +53,35 @@ function getUserInputBlock (isSecure, isBasicAuth) {
 		reader.question("Enter location of the CA certificate: ");
     `;
   }
-  else {
-    if (isBasicAuth) {
-      return `       
-      `;
+  else
+  {
+    if (authMethod === "certificate")
+    {
+      throw new Error('authorization using certificate is currently not supported for ws protocol, please set authorization as basic or digest');
     }
-    else {
-      return ` 
+  }
+
+  if (authMethod === "basic" || authMethod === "digest")
+  {
+    retStr += `
     let username = "ASYNCAPI_WS_CLIENT_USERNAME" in process.env ?
-    		process.env.ASYNCAPI_WS_CLIENT_USERNAME :
-		reader.question("Enter the username for accessing the service: ");
+            process.env.ASYNCAPI_WS_CLIENT_USERNAME :
+        reader.question("Enter the username for accessing the service: ");
     let password = "ASYNCAPI_WS_CLIENT_PASSWORD" in process.env ?
-    		process.env.ASYNCAPI_WS_CLIENT_PASSWORD :
-		reader.question("Enter the password for accessing the service: ",{ hideEchoBack: true });
+            process.env.ASYNCAPI_WS_CLIENT_PASSWORD :
+        reader.question("Enter the password for accessing the service: ",{ hideEchoBack: true });
     if (!username || !password) {
       throw new Error("username and password can not be empty");
     }
       `;
-    }
   }
+
+  return retStr;
 }
 
 function getQueryParamBlock(queryMap) {
   let mapSize = queryMap.length;  
-  let s1 ='const queryParams = new Map([';
+  let s1 ='\n    const queryParams = new Map([';
   queryMap.forEach(function(value, key) {
     s1 += '[\''+key+'\',\''+value+'\']';
     mapSize--;
@@ -112,45 +113,78 @@ function getQueryParamBlock(queryMap) {
   `;
 }
 
-function getServiceUrlBlock (isSecure,isBasicAuth,urlProtocol,urlHost,urlPath) {
-  if (isSecure) {
-    return ` 
-    let serviceURL = '`+urlProtocol+`://`+urlHost+urlPath+`';
-    `
-    ;
-  }
-  else {
-    if (isBasicAuth) {	  
-      return ` 
-    let serviceURL = '`+urlProtocol+`://`+urlHost+urlPath+`';
-      `;
+function getServiceUrlBlock (isSecure, authMethod, urlProtocol, urlHost, urlPath) {
+  let httpProtocol = ``;
+  let httpURL = ``;
+  if (authMethod === "digest")
+  {
+    if (isSecure)
+    {
+      httpProtocol = `https`;
     }
-    else {
-      return `
-    let serviceURL = '`+urlProtocol+`://'+username+':'+password+'@`+urlHost+urlPath+`';
-    `;
+    else
+    {
+      httpProtocol = `http`;
     }
+    httpURL = `    serviceURLHttp = '` + httpProtocol + `://` + urlHost + urlPath + `';\n`;
   }
+  return `
+    // construct service URL
+    serviceURL = '` + urlProtocol + `://` + urlHost + urlPath + `';\n` + httpURL;
 }
 
-function getWebSocketConnectionBlock (isSecure) {
-  if (isSecure) {
-    return ` 
-    // establishing secure websocket connection to the service
-    const options = {
+function getWebSocketConnectionBlock (isSecure, authMethod) {
+  let getAuthHeaderStr = ``;
+  if (authMethod === "basic")
+  {
+    getAuthHeaderStr = `\n    auth = 'Basic ' + Buffer.from(username + ':' + password).toString('base64');`;
+  }
+  if (authMethod === "digest")
+  {
+    let caCertStr = ``;
+    if (isSecure)
+    {
+      caCertStr = `, ca: fs.readFileSync(caCert)`;
+    }
+    getAuthHeaderStr = `
+    // Get digest auth nonce
+    const promise = await new Promise((resolve, reject) => {
+        const req = http.request(serviceURLHttp, {method: 'GET'` + caCertStr + `}, (res) => {
+            let wwwAuthenticate = res.headers['www-authenticate'];
+            auth = digest('GET', res.req.path, wwwAuthenticate, username + ':' + password);
+            resolve();
+        });
+        req.end();
+    });\n`
+  }
+
+  let authInit = ``;
+  let authOption = ``;
+  if (authMethod === "basic" || authMethod === "digest" )
+  {
+    authInit = `\n    let auth = "";`;
+    authOption = `
+      headers: {Authorization: auth}`;
+    if (isSecure)
+    {
+      authOption = authOption + `,`;
+    }
+  }
+
+  let keyCertOption = ``;
+  if (isSecure)
+  {
+    keyCertOption = `
       key: fs.readFileSync(userKey),
       cert: fs.readFileSync(userCert),
-      ca: fs.readFileSync(caCert)
-     };
-    const wsClient = new WebSocket(serviceURL,options);
-    `;
+      ca: fs.readFileSync(caCert)`;
   }
-  else {
-    return ` 
-    // establishing websocket connection to the service
-    const wsClient = new WebSocket(serviceURL);
-    `;
-  }
+
+  return authInit + getAuthHeaderStr + `
+    // establishing secure websocket connection to the service
+    const options = {` + authOption + keyCertOption + ` 
+    };
+    const wsClient = new WebSocket(serviceURL, options);`;
 }
 
 function setQueryParam (channel, queryMap) {
@@ -203,8 +237,10 @@ export default function({ asyncapi, params })
     isSecure = true;
   }
     
-  if (urlHost.includes("@")) {
-    isBasicAuth = true;
+  const auth = params.authorization;
+  if (auth !== "basic" && auth !== "digest" && auth !== "certificate")
+  {
+    throw new Error('the authorization method must be basic, digest or certificate');
   }
 
   if (channels.length !== 1) {
@@ -240,11 +276,17 @@ export default function({ asyncapi, params })
   });
 
   let dataProcessBlock = getDataProcessingBlock(msgType);
-  let userInputBlock = getUserInputBlock(isSecure,isBasicAuth);
-  let serviceUrlBlock = getServiceUrlBlock(isSecure,isBasicAuth,urlProtocol,urlHost,urlPath);
+  let userInputBlock = getUserInputBlock(isSecure, auth);
+  let serviceUrlBlock = getServiceUrlBlock(isSecure, auth, urlProtocol, urlHost, urlPath);
   let queryParamBlock = getQueryParamBlock(queryMap); 
-  let websocketConnectionBlock = getWebSocketConnectionBlock(isSecure);
-  
+  let websocketConnectionBlock = getWebSocketConnectionBlock(isSecure, auth);
+
+  let requireHttpPkg = `const http = require('node:http');\n`;
+  if (isSecure)
+  {
+    requireHttpPkg = `const http = require('node:https');\n`;
+  }
+
   return (
     <File name="client.js">
       {`//////////////////////////////////////////////////////////////////////
@@ -257,7 +299,12 @@ export default function({ asyncapi, params })
 const WebSocket = require('ws')
 const reader = require('readline-sync');
 const fs = require('fs');
-
+const digest = require('digest-header');
+`
++
+requireHttpPkg
++          
+`
 //////////////////////////////////////////////////////////////////////
 //
 // This client demonstrates the one-way websocket streaming use case
