@@ -143,13 +143,13 @@ You can configure this template by passing different parameters in the Generator
 
 ### Authentication and Authorization Support
 - Basic Authentication and Authorization <br>
-use "-p authorization=basic" option in the code generation command line to use the basicAuth mode in the generated client. The client will ask for the user credentials (username/password) or check for the environmeent variables ASYNCAPI_WS_CLIENT_USERNAME and ASYNCAPI_WS_CLIENT_PASSWORD. The generated client will theen construct a basicAuth header field in the websocket connection reequest. <br><br>
+use "-p authorization=basic" option in the code generation command line to use the basicAuth mode in the generated client. The client will ask for the user credentials (username/password) or check for the environmeent variables ASYNCAPI_WS_CLIENT_USERNAME and ASYNCAPI_WS_CLIENT_PASSWORD. The generated client will then construct a basicAuth header field in the websocket connection request. <br><br>
 
-- Digest Authentication and Authorization
-use "-p authorization=digest" option in the code generation command line to use the digeestAuth mode in the generated client. The client will ask for the user credentials (username/password) or check for the environmeent variables ASYNCAPI_WS_CLIENT_USERNAME and ASYNCAPI_WS_CLIENT_PASSWORD. The client will then construct a digestAuth header field in the websocket connection reequest. <br><br>
+- Digest Authentication and Authorization <br>
+use "-p authorization=digest" option in the code generation command line to use the digeestAuth mode in the generated client. The client will ask for the user credentials (username/password) or check for the environmeent variables ASYNCAPI_WS_CLIENT_USERNAME and ASYNCAPI_WS_CLIENT_PASSWORD. The client will then construct a digestAuth header field in the websocket connection request. <br><br>
 
-- x-Certificate Authentication and Authorization
-use "-p authorization=certificate" option in the code generation command line to use the certificate mode in the generated client. The generated client will ask for the locations of the certificate/key files. The client will then construct the sslContext needed with the given certificate/key files for the websocket connection reequest. <br><br>
+- x-Certificate Authentication and Authorization <br>
+use "-p authorization=certificate" option in the code generation command line to use the certificate mode in the generated client. The generated client will ask for the locations of the certificate/key files. The client will then construct the sslContext needed with the given certificate/key files for the websocket connection request. <br><br>
 
 
 When reverse proxy is used in the setup, only basicAuth or digestAuth are supported as authorization mode with the data streaming service. If the reverse proxy is in secure mode, you may also need to provide the client certificate information in order to authenticate with the reverse proxy.
