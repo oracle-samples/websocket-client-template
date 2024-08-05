@@ -135,6 +135,13 @@ You can configure this template by passing different parameters in the Generator
 &nbsp;&nbsp;&nbsp;&nbsp; pip install -r requirements.txt<br>
 &nbsp;&nbsp;&nbsp;&nbsp; python client.py <br>
 
+- Java
+  - use "-p language=java" option in the client code generation command line.
+  - once the client code is generated <br>
+&nbsp;&nbsp;&nbsp;&nbsp; cd output <br>
+&nbsp;&nbsp;&nbsp;&nbsp; mvn package<br>
+&nbsp;&nbsp;&nbsp;&nbsp; java -jar target/AsyncapiWebSocketClientEndpoint-1.0-SNAPSHOT.jar <br>
+
 - all
   - use "-p language=all" option in the client code generation command line to generate  clients in all supported languages.  
   - follow above instructions to build and run the clients<br>
