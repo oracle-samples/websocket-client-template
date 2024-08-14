@@ -59,6 +59,7 @@ function getUserInputBlock (isSecure, authMethod) {
             System.out.println("\\n ----- Using KeyStore file in ASYNCAPI_WS_CLIENT_KEYSTORE for client certificate/key ----- \\n");
         }
         else if (userCertPath != null && userKeyPath != null) {
+            userCertUsePEM = true;
             System.out.println("\\n ----- Using PEM files in ASYNCAPI_WS_CLIENT_CERT and ASYNCAPI_WS_CLIENT_KEY for client certificate/key ----- \\n");
         }
         else {
@@ -91,6 +92,7 @@ function getUserInputBlock (isSecure, authMethod) {
             System.out.println("\\n ----- Using TrustStore file in ASYNCAPI_WS_TRUSTSTORE for CA certificate ----- \\n");
         }
         else if (caCertPath != null) {
+            caUsePEM = true;
             System.out.println("\\n ----- Using PEM file in ASYNCAPI_WS_CA_CERT for CA certificate ----- \\n");
         }
         else {
@@ -281,7 +283,7 @@ function getClientConfigBlock(isSecure, authMethod) {
     getAuthHeaderStr = `
                 String auth = username + ":" + password;
                 String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
-                headers.put("Authorization", List.of("Basic " + encodedAuth));
+                headers.put("Authorization", Arrays.asList("Basic " + encodedAuth));
 `;
   }
   if (authMethod === "digest")
@@ -289,7 +291,7 @@ function getClientConfigBlock(isSecure, authMethod) {
     getAuthHeaderStr = `
                 String auth = getDigestAuthHeader();
                 if (auth != null) {
-                    headers.put("Authorization", List.of(auth));
+                    headers.put("Authorization", Arrays.asList(auth));
                 }`;
 
     let createClientStr = `
@@ -635,6 +637,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.CountDownLatch;
 
