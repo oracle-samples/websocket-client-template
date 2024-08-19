@@ -139,8 +139,6 @@ You can configure this template by passing different parameters in the Generator
   - use "-p language=java" option in the client code generation command line.
   - once the client code is generated <br>
 &nbsp;&nbsp;&nbsp;&nbsp; cd output <br>
-&nbsp;&nbsp;&nbsp;&nbsp; mkdir -p src/main/java/asyncapi/websocket/client/template <br>
-&nbsp;&nbsp;&nbsp;&nbsp; mv AsyncapiWebSocketClientEndpoint.java src/main/java/asyncapi/websocket/client/template <br>
 &nbsp;&nbsp;&nbsp;&nbsp; mvn package<br>
 &nbsp;&nbsp;&nbsp;&nbsp; java -jar target/AsyncapiWebSocketClientEndpoint-1.0.jar <br>
   - Requirement: Java 1.8 <br>
