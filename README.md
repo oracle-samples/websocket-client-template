@@ -141,7 +141,9 @@ You can configure this template by passing different parameters in the Generator
 &nbsp;&nbsp;&nbsp;&nbsp; cd output <br>
 &nbsp;&nbsp;&nbsp;&nbsp; mvn package<br>
 &nbsp;&nbsp;&nbsp;&nbsp; java -jar target/AsyncapiWebSocketClientEndpoint-1.0.jar <br>
-  - Requirement: Java 1.8 <br>
+  - Requirement <br>
+&nbsp;&nbsp;&nbsp;&nbsp; Java 1.8+ <br>
+&nbsp;&nbsp;&nbsp;&nbsp; Maven 3.9.x+ <br>
 
 - all
   - use "-p language=all" option in the client code generation command line to generate  clients in all supported languages.  
