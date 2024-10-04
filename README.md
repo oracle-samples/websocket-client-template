@@ -127,7 +127,6 @@ You can configure this template by passing different parameters in the Generator
 &nbsp;&nbsp;&nbsp;&nbsp; npm install <br>
 &nbsp;&nbsp;&nbsp;&nbsp; node client.js <br>
 
-
 - Python
   - use "-p language=python" option in the client code generation command line.
   - once the client code is generated <br>
@@ -145,10 +144,18 @@ You can configure this template by passing different parameters in the Generator
 &nbsp;&nbsp;&nbsp;&nbsp; Java 1.8+ <br>
 &nbsp;&nbsp;&nbsp;&nbsp; Maven 3.9.x+ <br>
 
+- Go
+  - use "-p language=Go" option in the client code generation command line.
+  - once the client code is generated <br>
+&nbsp;&nbsp;&nbsp;&nbsp; cd output <br>
+&nbsp;&nbsp;&nbsp;&nbsp; go build<br>
+&nbsp;&nbsp;&nbsp;&nbsp; ./client <br>
+  - Requirement <br>
+&nbsp;&nbsp;&nbsp;&nbsp; go1.22.2+ <br>
+
 - all
   - use "-p language=all" option in the client code generation command line to generate  clients in all supported languages.  
   - follow above instructions to build and run the clients<br>
-
 
 
 ### Authentication and Authorization Support

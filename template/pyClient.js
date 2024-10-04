@@ -22,6 +22,20 @@ function getUserInputBlock (isSecure, authMethod) {
 
   let retStr = ``;
 
+  if (authMethod === "basic" || authMethod === "digest") 
+  {
+    retStr += `
+    username = os.environ.get("ASYNCAPI_WS_CLIENT_USERNAME")
+    if not username:
+        username = input("Enter the username for accessing the service: ")
+    password = os.environ.get("ASYNCAPI_WS_CLIENT_PASSWORD")
+    if not password:
+        password = getpass.getpass(prompt="Enter the password for accessing the service: ")
+    if not username or not password :
+      raise ValueError("username and password can not be empty")
+      `;
+  }
+
   if (isSecure) 
   {
     retStr += `
@@ -42,20 +56,6 @@ function getUserInputBlock (isSecure, authMethod) {
     {
       throw new Error('authorization using certificate is currently not supported for ws protocol, please set authorization as basic or digest');
     }
-  }
-
-  if (authMethod === "basic" || authMethod === "digest") 
-  {
-    retStr += `
-    username = os.environ.get("ASYNCAPI_WS_CLIENT_USERNAME")
-    if not username:
-        username = input("Enter the username for accessing the service: ")
-    password = os.environ.get("ASYNCAPI_WS_CLIENT_PASSWORD")
-    if not password:
-        password = getpass.getpass(prompt="Enter the password for accessing the service: ")
-    if not username or not password :
-      raise ValueError("username and password can not be empty")
-      `;
   }
 
   return retStr;
@@ -242,6 +242,7 @@ export default function({ asyncapi, params }) {
 # ${urlProtocol} protocol: 
 # ${urlHost} 
 # ${urlPath}
+#
 ###############################################################################
 
 import asyncio

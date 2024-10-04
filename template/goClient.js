@@ -21,16 +21,25 @@ import { File } from '@asyncapi/generator-react-sdk';
 function getDataProcessingBlock (msgType) {
   if (msgType === "array") {
     return ` 
-        const recordArray = eval(records);
-        for (var i = 0; i < recordArray.length; i++) {
-	        console.log(recordArray[i]);
+        var jsonArray []map[string]interface{}
+        err = json.Unmarshal([]byte(message), &jsonArray)
+        if err != nil {
+            log.Println("Error parsing JSON: ", err)
+        }
+        log.Printf("received %d records", len(jsonArray))
+        for _, obj := range jsonArray {
+            jsonObj, err := json.Marshal(obj)
+            if err != nil {
+                log.Println("Error parsing JSON: ", err)
+            }
+            log.Printf("%s", jsonObj)
             //data processing, implement user logic here. 
         }
     `;
   }
   else {
     return ` 
-        console.log(records);
+        log.Printf("%s", message) 
         //data processing, implement user logic here. 
     `;	
   }
@@ -43,30 +52,52 @@ function getUserInputBlock (isSecure, authMethod) {
   if (authMethod === "basic" || authMethod === "digest")
   {
     retStr += `
-    let username = "ASYNCAPI_WS_CLIENT_USERNAME" in process.env ?
-            process.env.ASYNCAPI_WS_CLIENT_USERNAME :
-        reader.question("Enter the username for accessing the service: ");
-    let password = "ASYNCAPI_WS_CLIENT_PASSWORD" in process.env ?
-            process.env.ASYNCAPI_WS_CLIENT_PASSWORD :
-        reader.question("Enter the password for accessing the service: ",{ hideEchoBack: true });
-    if (!username || !password) {
-      throw new Error("username and password can not be empty");
+    username, exist := os.LookupEnv("ASYNCAPI_WS_CLIENT_USERNAME")
+    if !exist {
+        fmt.Print("Enter the username for accessing the service: ")
+        fmt.Scanln(&username)
     }
-      `;
+
+    password, exist := os.LookupEnv("ASYNCAPI_WS_CLIENT_PASSWORD")
+    if !exist {
+        fmt.Print("Enter the password for accessing the service: ")
+        bytepw, err := term.ReadPassword(int(syscall.Stdin))
+        if err != nil {
+            log.Fatal(err)
+        }
+        password = string(bytepw)
+        fmt.Println("")
+    }
+
+    if len(username) == 0 || len(password) == 0 {
+        fmt.Println("username and password can not be empty")
+        return
+    }
+    `;
   }
 
+
   if (isSecure) {
-    retStr += ` 
-    let userCert = "ASYNCAPI_WS_CLIENT_CERT" in process.env ? 
-    		process.env.ASYNCAPI_WS_CLIENT_CERT : 
-		reader.question("Enter location of the client certificate: ");
-    let userKey = "ASYNCAPI_WS_CLIENT_KEY" in process.env ? 
-    		process.env.ASYNCAPI_WS_CLIENT_KEY : 
-		reader.question("Enter location of the private key: ");
-    let caCert = "ASYNCAPI_WS_CA_CERT" in process.env ? 
-    		process.env.ASYNCAPI_WS_CA_CERT : 
-		reader.question("Enter location of the CA certificate: ");
-    `;
+    retStr += `
+    userCertPath, exist := os.LookupEnv("ASYNCAPI_WS_CLIENT_CERT")
+    userKeyPath := ""
+    if !exist {
+        fmt.Print("Enter location of the client certificate (if applicable): ")
+        fmt.Scanln(&userCertPath)
+        if len(userCertPath) != 0 {
+            userKeyPath, exist = os.LookupEnv("ASYNCAPI_WS_CLIENT_KEY")
+            if !exist {
+                fmt.Print("Enter location of the private key: ")
+                fmt.Scanln(&userKeyPath)
+            }
+        }
+    }
+
+    caCertPath, exist := os.LookupEnv("ASYNCAPI_WS_CA_CERT")
+    if !exist {
+        fmt.Print("Enter location of the CA certificate (if applicable): ")
+        fmt.Scanln(&caCertPath)
+    }`;
   }
   else
   {
@@ -81,34 +112,20 @@ function getUserInputBlock (isSecure, authMethod) {
 
 function getQueryParamBlock(queryMap) {
   let mapSize = queryMap.length;  
-  let s1 ='\n    const queryParams = new Map([';
+  let s1 ='\n    queryParams := url.Values{}';
   queryMap.forEach(function(value, key) {
-    s1 += '[\''+key+'\',\''+value+'\']';
-    mapSize--;
-    if (mapSize) {
-      s1+= ','
-    }
+    s1 += `\n    queryParams.Add("` + key + `", "` + value + `")`;
   })
-  s1+=']);';
     
   return s1+`\n
-    const queryParamSign    = "?";
-    const queryParamDelimit = "&";
-    let queryParamSignAdded = false;
-    let size                = queryParams.length;
+    for key := range queryParams {
+        fmt.Print("Enter the value for query parameter " + key + "(default=" + queryParams.Get(key) + "):")
+        var value string
+        fmt.Scanln(&value)
 
-    for (const [key, value] of queryParams) {
-      let paramValue = reader.question("Enter the value for query parameter "+key+"(default="+value+"):") || value;
-
-      if (!queryParamSignAdded) {
-        serviceURL += queryParamSign;
-        queryParamSignAdded = true;
-      }
-      serviceURL += key + "=" + paramValue;
-      size--;
-      if (size) {
-        serviceURL += queryParamDelimit;
-      }
+        if len(value) != 0 {
+            queryParams.Set(key, value)
+        }
     }
   `;
 }
@@ -126,65 +143,116 @@ function getServiceUrlBlock (isSecure, authMethod, urlProtocol, urlHost, urlPath
     {
       httpProtocol = `http`;
     }
-    httpURL = `    serviceURLHttp = '` + httpProtocol + `://` + urlHost + urlPath + `';\n`;
+    httpURL = `serviceURLHttp := url.URL{Scheme: "` + httpProtocol + `", Host: "` + urlHost + `", Path: "` + urlPath + `"}
+    `;
+
   }
   return `
     // construct service URL
-    serviceURL = '` + urlProtocol + `://` + urlHost + urlPath + `';\n` + httpURL;
+    serviceURL := url.URL{Scheme: "` + urlProtocol + `", Host: "` + urlHost + `", Path: "` + urlPath + `", RawQuery: queryParams.Encode()}
+    ` + httpURL;
 }
 
 function getWebSocketConnectionBlock (isSecure, authMethod) {
-  let getAuthHeaderStr = ``;
+
+  let getCertBlock = ``;
+  if (isSecure)
+  {
+    getCertBlock = `
+    tlsConfig := &tls.Config {}
+
+    if len(caCertPath) != 0 {
+        caCertFile, err := ioutil.ReadFile(caCertPath)
+        if err != nil {
+            log.Fatal(err)
+        }
+        caCertPool := x509.NewCertPool()
+        caCertPool.AppendCertsFromPEM(caCertFile)
+        tlsConfig.RootCAs = caCertPool
+    }
+
+    if len(userCertPath) != 0 && len(userKeyPath) != 0 {
+        clientCertKeyFile, err := tls.LoadX509KeyPair(userCertPath, userKeyPath)
+        if err != nil {
+            log.Fatal(err)
+        }
+        tlsConfig.Certificates = []tls.Certificate{clientCertKeyFile}
+    }
+    `;
+  }
+
+
+  let getAuthHeaderStr = `
+    extraHeader := http.Header{}
+    `;
   if (authMethod === "basic")
   {
-    getAuthHeaderStr = `\n    auth = 'Basic ' + Buffer.from(username + ':' + password).toString('base64');`;
+    getAuthHeaderStr += `
+    extraHeader = http.Header{"Authorization": {"Basic " + base64.StdEncoding.EncodeToString([]byte(username + ":" + password))}}
+    `;
   }
   if (authMethod === "digest")
   {
-    let caCertStr = ``;
+    let httpReqClient = `http`;
+    let httpReqTLSConfig = ``;
     if (isSecure)
     {
-      caCertStr = `, ca: fs.readFileSync(caCert)`;
+      httpReqTLSConfig = `
+    clientGetAuth := &http.Client{
+        Transport: &http.Transport{
+            TLSClientConfig: tlsConfig,
+        },
+    }`;
+      httpReqClient = `clientGetAuth`;
     }
-    getAuthHeaderStr = `
-    // Get digest auth nonce
-    const promise = await new Promise((resolve, reject) => {
-        const req = http.request(serviceURLHttp, {method: 'GET'` + caCertStr + `}, (res) => {
-            let wwwAuthenticate = res.headers['www-authenticate'];
-            auth = digest('GET', res.req.path, wwwAuthenticate, username + ':' + password);
-            resolve();
-        });
-        req.end();
-    });\n`
+    getAuthHeaderStr += httpReqTLSConfig + ` 
+    res, err := ` + httpReqClient + `.Get(serviceURLHttp.String())
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // get the challenge from a 401 response
+    digestAuthField := res.Header.Get("WWW-Authenticate")
+    if digestAuthField != "" {
+        chal, _ := digest.ParseChallenge(digestAuthField)
+
+        // use it to create credentials for the next request
+        cred, _ := digest.Digest(chal, digest.Options{
+            Username: username,
+            Password: password,
+            Method:   http.MethodGet,
+        })
+
+        extraHeader.Set("Authorization", cred.String())
+    }
+    `;
   }
 
-  let authInit = ``;
-  let authOption = ``;
-  if (authMethod === "basic" || authMethod === "digest" )
-  {
-    authInit = `\n    let auth = "";`;
-    authOption = `
-      headers: {Authorization: auth}`;
-    if (isSecure)
-    {
-      authOption = authOption + `,`;
-    }
-  }
+  let websocketReq = `
+    // establishing secure websocket connection to the service`;
 
-  let keyCertOption = ``;
   if (isSecure)
   {
-    keyCertOption = `
-      key: fs.readFileSync(userKey),
-      cert: fs.readFileSync(userCert),
-      ca: fs.readFileSync(caCert)`;
+    websocketReq = `
+    dialer := websocket.Dialer{TLSClientConfig: tlsConfig,}
+    connection, _, err := dialer.Dial(serviceURL.String(), extraHeader)
+    `;
+  }
+  else
+  {
+    websocketReq =`
+    connection, _, err := websocket.DefaultDialer.Dial(serviceURL.String(), extraHeader)
+    `;
   }
 
-  return authInit + getAuthHeaderStr + `
-    // establishing secure websocket connection to the service
-    const options = {` + authOption + keyCertOption + ` 
-    };
-    const wsClient = new WebSocket(serviceURL, options);`;
+  websocketReq += `
+    if err != nil {
+        log.Fatal("dial:", err)
+    }
+    defer connection.Close()
+    `;
+
+  return getCertBlock + getAuthHeaderStr + websocketReq; 
 }
 
 function setQueryParam (channel, queryMap) {
@@ -217,7 +285,7 @@ export default function({ asyncapi, params })
   }
 
   const lang = params.language;
-  if (lang !== "all" && lang !== "javascript")
+  if (lang !== "all" && lang !== "go")
   {
     return null;
   }
@@ -281,14 +349,54 @@ export default function({ asyncapi, params })
   let queryParamBlock = getQueryParamBlock(queryMap); 
   let websocketConnectionBlock = getWebSocketConnectionBlock(isSecure, auth);
 
-  let requireHttpPkg = `const http = require('node:http');\n`;
+  // unused imported package would be error
+  let importPkg = `
+    "fmt"
+    "log"
+    "net/url"
+    "net/http"
+    "os"
+    "github.com/gorilla/websocket"`;
+
+  if (auth !== "certificate")
+  {
+    importPkg += `
+    "golang.org/x/term"
+    "syscall"
+    `
+    if (auth === "basic")
+    {
+      importPkg += `
+    "encoding/base64"
+    `;
+    }
+
+    if (auth === "digest")
+    {
+      importPkg += `
+    "github.com/icholy/digest"
+    `;
+    }
+  }
+
   if (isSecure)
   {
-    requireHttpPkg = `const http = require('node:https');\n`;
+    importPkg += `
+    "crypto/x509"
+    "crypto/tls"
+    "io/ioutil"
+    `;
+  }
+
+  if (msgType === "array")
+  {
+    importPkg += `
+    "encoding/json"
+    `;
   }
 
   return (
-    <File name="client.js">
+    <File name="client.go">
       {`//////////////////////////////////////////////////////////////////////
 //
 // ${asyncapi.info().title()} - ${asyncapi.info().version()}
@@ -297,14 +405,18 @@ export default function({ asyncapi, params })
 // ${urlPath}
 //
 //////////////////////////////////////////////////////////////////////
-const WebSocket = require('ws')
-const reader = require('readline-sync');
-const fs = require('fs');
-const digest = require('digest-header');
+
+package main
+
+import (`
++
+importPkg
++
+`
+)
+
 `
 +
-requireHttpPkg
-+          
 `
 //////////////////////////////////////////////////////////////////////
 //
@@ -321,18 +433,17 @@ requireHttpPkg
 // assume an array of json objects.
 //
 ////////////////////////////////////////////////////////////////
-const ${userFunction} = (wsClient) => {
-    wsClient.on('message', function message(data) {
-        console.log('received some data:')
-        const records = data.toString()
+func ${userFunction}(connection *websocket.Conn) {
+    for {
+        _, message, err := connection.ReadMessage()
+        if err != nil {
+            log.Fatal("ReadMessage error:", err)
+        }
 `+
  dataProcessBlock
  +
-      `    
-    });
-    wsClient.on('error', (err) => {
-        console.log(err.toString());
-    });
+`    
+    }
 }
 
 ////////////////////////////////////////////////////////////////
@@ -344,33 +455,34 @@ const ${userFunction} = (wsClient) => {
 //
 ////////////////////////////////////////////////////////////////
 
-const init = async () =>{
+func main() {
+
+    // no datetime in log
+    log.SetFlags(0)
 `+
  userInputBlock
  +
- serviceUrlBlock
- +
  queryParamBlock
  +
+ serviceUrlBlock
+ +
       `
-    console.log(" ");
-    console.log("Establishing websocket connection to: ");
+    fmt.Println(" ")
+    fmt.Println("Establishing websocket connection to: ")
     // uncomment below for debugging
-    console.log(serviceURL); 
-    console.log(" ");
+    fmt.Println(serviceURL.String()) 
+    fmt.Println(" ")
 `+
  websocketConnectionBlock
  +
       `
-    console.log(" ");
-    console.log("Start streaming data from the service ...");
-    console.log(" ");
+    fmt.Println(" ")
+    fmt.Println("Start streaming data from the service ...")
+    fmt.Println(" ")
 
     // now start the client processing    
-    ${userFunction} (wsClient)
+    ${userFunction} (connection)
 }
-
-init()
 `
       }
     </File>
